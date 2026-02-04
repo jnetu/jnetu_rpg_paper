@@ -2,3 +2,10 @@ name: meu_plugin
 version: '1.0-SNAPSHOT'
 main: jnetu.meu_plugin.Meu_plugin
 api-version: '1.21'
+commands:
+  sethome:
+    description: Define sua casa.
+  home:
+    description: Teleporta voce para sua casa.
+  habilidades:
+    description: UI de habilidades
