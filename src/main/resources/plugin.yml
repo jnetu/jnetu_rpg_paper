@@ -2,6 +2,7 @@ name: meu_plugin
 version: '1.0-SNAPSHOT'
 main: jnetu.meu_plugin.Meu_plugin
 api-version: '1.21'
+depend: [AuraSkills]
 commands:
   sethome:
     description: Define sua casa.
@@ -9,3 +10,9 @@ commands:
     description: Teleporta voce para sua casa.
   habilidades:
     description: UI de habilidades
+
+  testaritem:
+    description: teste de item texture
+
+  auratest:
+    description: Testa a API do AuraSkills

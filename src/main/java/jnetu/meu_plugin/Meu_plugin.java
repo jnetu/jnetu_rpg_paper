@@ -2,6 +2,7 @@ package jnetu.meu_plugin;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -11,6 +12,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
@@ -43,6 +45,15 @@ public final class Meu_plugin extends JavaPlugin implements Listener {
         Objects.requireNonNull(getCommand("sethome")).setExecutor(this);
         Objects.requireNonNull(getCommand("home")).setExecutor(this);
         Objects.requireNonNull(getCommand("habilidades")).setExecutor(this);
+
+
+        //AURASKILLS
+        if (getServer().getPluginManager().getPlugin("AuraSkills") != null) {
+            Objects.requireNonNull(getCommand("auratest")).setExecutor(new Aura_meu());
+            getLogger().info("Integração com AuraSkills ativada!");
+        } else {
+            getLogger().warning("AuraSkills não encontrado! O comando /auratest foi desativado.");
+        }
     }
 
     public void onDisable() {
@@ -69,10 +80,23 @@ public final class Meu_plugin extends JavaPlugin implements Listener {
     }
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-
         // Verificar se quem digitou foi um jogador (console não tem "home")
         if (!(sender instanceof Player player)) {
             sender.sendMessage("Apenas jogadores podem usar comandos");
+            return true;
+        }
+
+        if (command.getName().equalsIgnoreCase("testaritem")) {
+            ItemStack espada = new ItemStack(Material.DIAMOND_SWORD);
+            ItemMeta meta = espada.getItemMeta();
+
+            if (meta != null) {
+                meta.displayName(Component.text("Espada de Gelo", NamedTextColor.AQUA));
+                meta.setCustomModelData(1001); // O Bukkit cuida da sintaxe da 1.21 sozinho
+                espada.setItemMeta(meta);
+                player.getInventory().addItem(espada);
+                player.sendMessage("§bItem de teste entregue!");
+            }
             return true;
         }
 
@@ -229,6 +253,40 @@ public final class Meu_plugin extends JavaPlugin implements Listener {
                                 block.setType(Material.ICE);
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+    public ItemStack criarEspadaGelo() {
+        ItemStack espada = new ItemStack(Material.DIAMOND_SWORD);
+        ItemMeta meta = espada.getItemMeta();
+
+        meta.displayName(Component.text("Espada de Gelo", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
+
+        //ID único para textura
+        meta.setCustomModelData(1001);
+
+        meta.lore(java.util.List.of(Component.text("Aplica lentidão aos inimigos!", NamedTextColor.GRAY)));
+
+        espada.setItemMeta(meta);
+        return espada;
+    }
+
+    @EventHandler
+    public void aoAtacar(EntityDamageByEntityEvent event) {
+        if (event.getDamager() instanceof Player player) {
+            ItemStack item = player.getInventory().getItemInMainHand();
+
+            // Verifica se o item tem o nosso CustomModelData
+            if (item.hasItemMeta() && item.getItemMeta().hasCustomModelData()) {
+                if (item.getItemMeta().getCustomModelData() == 1001) {
+                    if (event.getEntity() instanceof org.bukkit.entity.LivingEntity vitima) {
+                        // Aplica lentidão nível 2 por 5 segundos (100 ticks)
+                        vitima.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                                org.bukkit.potion.PotionEffectType.SLOWNESS, 100, 1));
+
+                        player.sendMessage(Component.text("Inimigo congelado!", NamedTextColor.AQUA));
                     }
                 }
             }
