@@ -14,7 +14,7 @@ public class MinhasSkills {
                     .build())
             .build();
     public static final CustomSkill MARKENTING = CustomSkill.builder(NamespacedId.of("meu_plugin", "marketing"))
-            .displayName("Social")
+            .displayName("marketing")
             .description("galera do marketing ae")
             .item(ItemContext.builder()
                     .material("stone")
