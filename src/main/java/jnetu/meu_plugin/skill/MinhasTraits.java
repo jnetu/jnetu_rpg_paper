@@ -5,8 +5,11 @@ import dev.aurelium.auraskills.api.trait.CustomTrait;
 
 public class MinhasTraits {
 
-    // Identificador: meu_plugin:reducao_bateria
-    public static final CustomTrait REDUCAO_BATERIA = CustomTrait.builder(NamespacedId.of("meu_plugin", "reducao_bateria"))
+    public static final CustomTrait REDUCAO_BATERIA = CustomTrait
+            .builder(
+                    NamespacedId.of(
+                            "meu_plugin",
+                            "chat_battery"))
             .displayName("Redução de Recarga Social")
             .build();
 }

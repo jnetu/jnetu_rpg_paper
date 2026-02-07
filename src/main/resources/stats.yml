@@ -1,26 +1,9 @@
 stats:
   meu_plugin/carisma:
     enabled: true
-    display_name: "&dCarisma"
-    description: "Cada ponto reduz em &a{value}%&r o tempo para recarregar a bateria social."
-    symbol: "✦"
-    color: "&d"
-    menu:
-      material: magenta_stained_glass_pane
-      pos:
-        row: 2
-        column: 4
-
+    traits:
+      meu_plugin/chat_battery:
+        modifier: 10
 traits:
-  meu_plugin/reducao_bateria:
+  meu_plugin/chat_battery:
     enabled: true
-    display_name: "Redução de Bateria"
-    description: "Diminui o tempo de espera."
-    menu:
-      material: clock # O ícone que vai aparecer no menu de detalhes
-      pos:
-        row: 1
-        column: 1
-    modifier:
-      prefix: "-"
-      suffix: "%"

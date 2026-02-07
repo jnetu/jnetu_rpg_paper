@@ -2,7 +2,6 @@ package jnetu.meu_plugin;
 
 import dev.aurelium.auraskills.api.AuraSkillsApi;
 import dev.aurelium.auraskills.api.registry.NamespacedRegistry;
-import dev.aurelium.auraskills.api.source.SourceType;
 import jnetu.meu_plugin.skill.*;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -38,22 +37,19 @@ public final class Meu_plugin extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
-        // 1. Log de Início
+
         getLogger().info("=========================================");
         getLogger().info(" Iniciando Plugin de Skills (Jnetu)");
         getLogger().info("=========================================");
 
-        // 2. ARQUIVOS DE CONFIGURAÇÃO (Prioridade Máxima)
-        // É obrigatório gerar o stats.yml ANTES de carregar a API do AuraSkills
-        // para evitar o erro de NullPointerException nos menus.
         salvarArquivo("stats.yml");
         salvarArquivo("sources/social.yml");
         salvarArquivo("rewards/social.yml");
 
-        // 3. CONFIGURAÇÃO AURASKILLS
+        // CONFIGURAÇÃO AURASKILLS
         carregarAuraSkills();
 
-        // 4. CONFIGURAÇÃO BUKKIT (Comandos e Eventos)
+        // CONFIGURAÇÃO BUKKIT Comandos Eventos
         carregarBukkit();
 
         getLogger().info("Plugin totalmente carregado e pronto!");
@@ -65,33 +61,26 @@ public final class Meu_plugin extends JavaPlugin implements Listener {
      */
     private void carregarAuraSkills() {
         AuraSkillsApi auraSkills = AuraSkillsApi.get();
-
-        // A. Inicializa o Registro (Lê o stats.yml que salvamos acima)
         NamespacedRegistry registry = auraSkills.useRegistry("meu_plugin", getDataFolder());
 
-        // B. Registra Traits e Stats (Ordem Importante: Trait -> Stat)
         registry.registerTrait(MinhasTraits.REDUCAO_BATERIA);
         registry.registerStat(MinhasStats.CARISMA);
         getLogger().info("[AuraSkills] Stats e Traits registrados.");
 
-        // C. Registra Handlers (Lógica dos Traits)
         CarismaHandler carismaHandler = new CarismaHandler(auraSkills);
         auraSkills.getHandlers().registerTraitHandler(carismaHandler);
 
-        // D. Registra Skills
         registry.registerSkill(MinhasSkills.SOCIAL);
-        registry.registerSkill(MinhasSkills.MARKENTING); // Cuidado com o typo "Markenting" -> "Marketing"
         getLogger().info("[AuraSkills] Skills registradas.");
 
-        // E. Registra Source Types (Fontes de XP customizadas)
+
+
         registry.registerSourceType("chat_battery", (sourceNode, context) -> {
             long recharge = sourceNode.node("recharge_seconds").getLong(600);
             return new SocialSource(context.parseValues(sourceNode), recharge);
         });
         getLogger().info("[AuraSkills] SourceType 'chat_battery' registrado.");
 
-        // F. Registra Listeners Específicos de Skills
-        // Passamos o plugin e a API para o Leveler
         getServer().getPluginManager().registerEvents(
                 new SocialLeveler(this, auraSkills),
                 this
@@ -111,24 +100,19 @@ public final class Meu_plugin extends JavaPlugin implements Listener {
         registrarComando("habilidades");
     }
 
-// =========================================================================
-// MÉTODOS AUXILIARES (Para deixar o código acima limpo)
-// =========================================================================
-
     /**
      * Salva um arquivo da pasta resources apenas se ele não existir.
      */
     private void salvarArquivo(String caminho) {
         File arquivo = new File(getDataFolder(), caminho);
         if (!arquivo.exists()) {
-            // O false no final garante que não vamos sobrescrever config de quem já usa o plugin
             saveResource(caminho, false);
             getLogger().info("Arquivo gerado: " + caminho);
         }
     }
 
     /**
-     * Registra um comando verificando se ele existe no plugin.yml para evitar crash.
+     * Registra um comando
      */
     private void registrarComando(String nomeComando) {
         var pluginCommand = getCommand(nomeComando);

@@ -13,12 +13,4 @@ public class MinhasSkills {
                     .pos("4,4")
                     .build())
             .build();
-    public static final CustomSkill MARKENTING = CustomSkill.builder(NamespacedId.of("meu_plugin", "marketing"))
-            .displayName("marketing")
-            .description("galera do marketing ae")
-            .item(ItemContext.builder()
-                    .material("stone")
-                    .pos("4,5")
-                    .build())
-            .build();
 }

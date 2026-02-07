@@ -174,23 +174,6 @@ public class SocialLeveler implements Listener {
         // Calcula o tempo final
         return (long) (tempoBase * (1.0 - porcentagemReducao));
     }
-//    private long calcularTempoRecargaComCarisma(Player player, long tempoBase) {
-//        SkillsUser user = api.getUser(player.getUniqueId());
-//        if (user == null) return tempoBase;
-//
-//        // Pega o nível do stat Carisma
-//        double carisma = user.getStatLevel(MinhasStats.CARISMA);
-//
-//        // Cada ponto reduz 10%
-//        double reducao = carisma * 0.10;
-//
-//        // Limita a redução a 100% (não pode ser negativo)
-//        reducao = Math.min(reducao, 1.0);
-//
-//        // Calcula o tempo final
-//        // Exemplo: 600s com 3 de carisma = 600 * (1 - 0.30) = 420s
-//        return (long) (tempoBase * (1.0 - reducao));
-//    }
 
     @EventHandler
     public void aoEntrar(PlayerJoinEvent event) {
