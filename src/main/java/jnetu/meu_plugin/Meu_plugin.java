@@ -3,6 +3,7 @@ package jnetu.meu_plugin;
 import dev.aurelium.auraskills.api.AuraSkillsApi;
 import dev.aurelium.auraskills.api.registry.NamespacedRegistry;
 import jnetu.meu_plugin.skill.*;
+import jnetu.meu_plugin.util.PluginsListCustomizer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -116,6 +117,14 @@ public final class Meu_plugin extends JavaPlugin implements Listener {
         registrarComando("sethome");
         registrarComando("home");
         registrarComando("habilidades");
+
+        // Customizar comando /plugins
+        getServer().getPluginManager().registerEvents(
+                new PluginsListCustomizer(this),
+                this
+        );
+
+        getLogger().info("Comando /plugins customizado!");
     }
 
     /**
