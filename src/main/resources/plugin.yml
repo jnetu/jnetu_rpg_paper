@@ -1,18 +1,24 @@
-name: meu_plugin
+name: Meu_plugin
 version: '1.0-SNAPSHOT'
 main: jnetu.meu_plugin.Meu_plugin
 api-version: '1.21'
-depend: [AuraSkills]
+depend: [Vault]
+softdepend: [AuraSkills]
+
 commands:
   sethome:
-    description: Define sua casa.
+    description: Define sua home
+    usage: /sethome
   home:
-    description: Teleporta voce para sua casa.
+    description: Teleporta para sua home
+    usage: /home
   habilidades:
-    description: UI de habilidades
-
-  testaritem:
-    description: teste de item texture
-
-  auratest:
-    description: Testa a API do AuraSkills
+    description: Abre menu de habilidades
+    usage: /habilidades
+  balance:
+    description: Mostra seu saldo de moedas
+    usage: /balance
+    aliases: [bal, money, moeda]
+  darmoeda:
+    description: Dá moedas (admin)
+    usage: /darmoeda <quantia>
