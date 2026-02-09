@@ -2,35 +2,24 @@ package jnetu.meu_plugin.util;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextDecoration;
-import org.bukkit.Bukkit;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.server.ServerCommandEvent;
 import org.bukkit.event.server.TabCompleteEvent;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.jetbrains.annotations.NotNull;
-
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Customiza a lista de plugins exibida pelo comando /plugins (ou /pl)
- *
  * Bloquear completamente o comando /plugins
  */
 public class PluginsListCustomizer implements Listener {
 
     private final JavaPlugin plugin;
-
 
     public PluginsListCustomizer(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -63,8 +52,6 @@ public class PluginsListCustomizer implements Listener {
         }
     }
 
-
-
     /**
      * Falsificar completamente a lista
      * Mostra APENAS plugins fake
@@ -96,17 +83,15 @@ public class PluginsListCustomizer implements Listener {
      */
     private void trollarPlayer(Player player) {
         player.sendMessage(Component.text("Plugins? Que plugins?", NamedTextColor.LIGHT_PURPLE));
-        player.sendMessage(Component.text("Este servidor roda em magia pura! ✨",
+        player.sendMessage(Component.text("Este servidor roda em magia pura! ✦",
                 NamedTextColor.LIGHT_PURPLE));
     }
-
 
     //evita hackers de tab
     @EventHandler
     public void aoUsarTabComplete(TabCompleteEvent event) {
         if (event.getBuffer().toLowerCase().startsWith("/plugins") ||
                 event.getBuffer().toLowerCase().startsWith("/pl")) {
-
             // Bloqueia autocompletar
             event.setCancelled(true);
         }
