@@ -8,6 +8,7 @@ import jnetu.meu_plugin.util.PluginsListCustomizer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -30,7 +31,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.UUID;
 
 public final class Meu_plugin extends JavaPlugin implements Listener {
@@ -40,359 +40,341 @@ public final class Meu_plugin extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
-
         getLogger().info("=========================================");
         getLogger().info(" Iniciando Plugin de Skills (Jnetu)");
         getLogger().info("=========================================");
 
-        salvarArquivo("stats.yml");
-        salvarArquivo("sources/social.yml");
-        salvarArquivo("rewards/social.yml");
-
-        // CONFIGURAÇÃO AURASKILLS
-        carregarAuraSkills();
-
-        // CONFIGURAÇÃO BUKKIT Comandos Eventos
-        carregarBukkit();
-
+        // 1. Registra economia no Vault
         carregarEconomia();
-        getLogger().info("Plugin totalmente carregado e pronto!");
+
+        // 2. Aguarda o AuraSkills carregar completamente
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            if (getServer().getPluginManager().isPluginEnabled("AuraSkills")) {
+                carregarAuraSkills();
+            } else {
+                getLogger().warning("AuraSkills não encontrado! Skills customizadas desabilitadas.");
+            }
+
+            carregarBukkit();
+            getLogger().info("✅ Plugin carregado com sucesso!");
+        }, 20L); // 1 segundo
     }
 
+    @Override
+    public void onDisable() {
+        // Remove as injeções ao desabilitar o plugin
+        if (getServer().getPluginManager().isPluginEnabled("AuraSkills")) {
+            AuraSkillsConfigManager configManager = new AuraSkillsConfigManager(this);
+            configManager.removerInjecoes();
+        }
+        getLogger().info("Plugin desabilitado.");
+    }
+
+    // ==================== ECONOMIA ====================
 
     private void carregarEconomia() {
-        if (getServer().getPluginManager().getPlugin("Vault") != null) {
-            MoedaEconomy minhaEconomia = new MoedaEconomy();
-            getServer().getServicesManager().register(
-                    Economy.class,
-                    minhaEconomia,
-                    this,
-                    ServicePriority.Highest
+        if (getServer().getPluginManager().getPlugin("Vault") == null) {
+            getLogger().warning("⚠ Vault não encontrado! Economia desabilitada.");
+            return;
+        }
+
+        MoedaEconomy minhaEconomia = new MoedaEconomy(this);
+        getServer().getServicesManager().register(
+                Economy.class,
+                minhaEconomia,
+                this,
+                ServicePriority.Highest
+        );
+
+        getLogger().info("✅ Economia registrada no Vault!");
+    }
+
+    // ==================== AURASKILLS ====================
+
+    private void carregarAuraSkills() {
+        try {
+            AuraSkillsApi api = AuraSkillsApi.get();
+            NamespacedRegistry registry = api.useRegistry("meu_plugin", getDataFolder());
+
+            // Registra Stat e Trait customizados
+            registry.registerStat(MinhasStats.CARISMA);
+            registry.registerTrait(MinhasTraits.REDUCAO_BATERIA);
+
+            // Registra handler do trait
+            CarismaHandler carismaHandler = new CarismaHandler(api);
+            api.getHandlers().registerTraitHandler(carismaHandler);
+
+            // Registra Skill customizada
+            registry.registerSkill(MinhasSkills.SOCIAL);
+
+            // Registra Source Type customizado
+            registry.registerSourceType("chat_battery", (sourceNode, context) -> {
+                long recharge = sourceNode.node("recharge_seconds").getLong(600);
+                return new SocialSource(context.parseValues(sourceNode), recharge);
+            });
+
+            // Registra listener da skill Social
+            getServer().getPluginManager().registerEvents(
+                    new SocialLeveler(this, api),
+                    this
             );
-            getLogger().info("Economia 'Moeda' registrada no Vault com sucesso!");
-        } else {
-            getLogger().warning("Vault não encontrado! A economia não funcionará.");
+
+            // ✅ INJETA CONFIGURAÇÕES NOS MENUS DO AURASKILLS
+            AuraSkillsConfigManager configManager = new AuraSkillsConfigManager(this);
+            configManager.injetarConfiguracoes();
+
+            // ✅ FORÇA O AURASKILLS A RECARREGAR OS MENUS
+            Bukkit.getScheduler().runTaskLater(this, () -> {
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "skills reload");
+                getLogger().info("✅ AuraSkills recarregado com novas configurações!");
+            }, 20L); // 1 segundo depois
+
+            getLogger().info("✅ Integrações com AuraSkills carregadas!");
+
+        } catch (Exception e) {
+            getLogger().severe("❌ Erro ao carregar AuraSkills:");
+            e.printStackTrace();
         }
     }
 
+    // ==================== BUKKIT ====================
 
-    /**
-     * Gerencia toda a lógica de carregamento da API AuraSkills
-     */
-    private void carregarAuraSkills() {
-        AuraSkillsApi auraSkills = AuraSkillsApi.get();
-        NamespacedRegistry registry = auraSkills.useRegistry("meu_plugin", getDataFolder());
-
-        registry.registerTrait(MinhasTraits.REDUCAO_BATERIA);
-        registry.registerStat(MinhasStats.CARISMA);
-        getLogger().info("[AuraSkills] Stats e Traits registrados.");
-
-        CarismaHandler carismaHandler = new CarismaHandler(auraSkills);
-        auraSkills.getHandlers().registerTraitHandler(carismaHandler);
-
-        registry.registerSkill(MinhasSkills.SOCIAL);
-        getLogger().info("[AuraSkills] Skills registradas.");
-
-
-
-        registry.registerSourceType("chat_battery", (sourceNode, context) -> {
-            long recharge = sourceNode.node("recharge_seconds").getLong(600);
-            return new SocialSource(context.parseValues(sourceNode), recharge);
-        });
-        getLogger().info("[AuraSkills] SourceType 'chat_battery' registrado.");
-
-        getServer().getPluginManager().registerEvents(
-                new SocialLeveler(this, auraSkills),
-                this
-        );
-
-
-        Bukkit.getScheduler().runTaskLater(this, () -> {
-            try {
-                AuraSkillsMenuInjector injector = new AuraSkillsMenuInjector(this);
-                injector.injetarContextosCustomizados();  // Injeta stat Carisma
-                injector.injetarContextoTrait();          // Injeta trait chat_battery
-                injector.injetarContextoSkill();          // Injeta skill Social
-
-                getLogger().info("✓ Menus do AuraSkills modificados com sucesso!");
-                getLogger().info("  Execute /skills reload ou reinicie o servidor");
-            } catch (Exception e) {
-                getLogger().warning("Não foi possível injetar menus no AuraSkills: " + e.getMessage());
-                getLogger().warning("Isso é normal se for a primeira vez rodando o plugin.");
-            }
-        }, 20L); // Espera 1 segundo (20 ticks)
-
-
-    }
-
-    /**
-     * Gerencia comandos e eventos padrões do Minecraft
-     */
     private void carregarBukkit() {
-        // Registra eventos da classe principal (se houver @EventHandler nesta classe)
+        // Registra eventos
         getServer().getPluginManager().registerEvents(this, this);
+        getServer().getPluginManager().registerEvents(new PluginsListCustomizer(this), this);
 
-        // Registra comandos de forma segura
+        // Registra comandos
         registrarComando("sethome");
         registrarComando("home");
         registrarComando("habilidades");
+        registrarComando("balance");
+        registrarComando("darmoeda");
 
-        // Customizar comando /plugins
-        getServer().getPluginManager().registerEvents(
-                new PluginsListCustomizer(this),
-                this
-        );
-
-        getLogger().info("Comando /plugins customizado!");
+        getLogger().info("✅ Comandos e eventos registrados!");
     }
 
-    /**
-     * Salva um arquivo da pasta resources apenas se ele não existir.
-     */
-    private void salvarArquivo(String caminho) {
-        File arquivo = new File(getDataFolder(), caminho);
-        if (!arquivo.exists()) {
-            saveResource(caminho, false);
-            getLogger().info("Arquivo gerado: " + caminho);
-        }
-    }
-
-    /**
-     * Registra um comando
-     */
     private void registrarComando(String nomeComando) {
-        var pluginCommand = getCommand(nomeComando);
-        if (pluginCommand != null) {
-            pluginCommand.setExecutor(this);
+        var cmd = getCommand(nomeComando);
+        if (cmd != null) {
+            cmd.setExecutor(this);
         } else {
-            getLogger().warning("ERRO: O comando '/" + nomeComando + "' não foi definido no plugin.yml!");
+            getLogger().warning("⚠ Comando '/" + nomeComando + "' não está no plugin.yml!");
         }
     }
 
-    public void onDisable() {
-        try {
-            AuraSkillsMenuInjector injector = new AuraSkillsMenuInjector(this);
-            injector.removerInjections();
-            getLogger().info("Configurações do AuraSkills restauradas");
-        } catch (Exception e) {
-            // Ignora erros ao desinstalar
-        }
-    }
+    // ==================== EVENTOS ====================
 
     @EventHandler
     public void aoEntrar(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-
-        //HABILIDADES
         UUID uuid = player.getUniqueId();
+
+        // Recarrega estado da habilidade
         if (getConfig().getBoolean("habilidades." + uuid + ".passo-gelado")) {
-            modoGeloAtivo.add(uuid); // Reativa a habilidade na variável
+            modoGeloAtivo.add(uuid);
         }
 
-        //mensagem só para o player
+        // Mensagens de boas-vindas
         player.sendMessage(Component.text("Bem-vindo ao servidor.", NamedTextColor.GREEN));
-        //mensagem global
-        Component mensagemGlobal = Component.text("O jogador ", NamedTextColor.GRAY)
+
+        Component mensagem = Component.text("O jogador ", NamedTextColor.GRAY)
                 .append(player.name().color(NamedTextColor.YELLOW))
-                .append(Component.text(" acabou de entrar!", NamedTextColor.GRAY));
-
-        Bukkit.broadcast(mensagemGlobal);
-    }
-    @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        // Verificar se quem digitou foi um jogador (console não tem "home")
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage("Apenas jogadores podem usar comandos");
-            return true;
-        }
-
-        if (command.getName().equalsIgnoreCase("testaritem")) {
-            ItemStack espada = new ItemStack(Material.DIAMOND_SWORD);
-            ItemMeta meta = espada.getItemMeta();
-
-            if (meta != null) {
-                meta.displayName(Component.text("Espada de Gelo", NamedTextColor.AQUA));
-                meta.setCustomModelData(1001); // O Bukkit cuida da sintaxe da 1.21 sozinho
-                espada.setItemMeta(meta);
-                player.getInventory().addItem(espada);
-                player.sendMessage("§bItem de teste entregue!");
-            }
-            return true;
-        }
-
-        // COMANDO /SETHOME
-        if (command.getName().equalsIgnoreCase("sethome")) {
-            Location loc = player.getLocation();
-            String uuid = player.getUniqueId().toString();
-
-            // Salva config.yml
-            getConfig().set("homes." + uuid + ".world", loc.getWorld().getName());
-            getConfig().set("homes." + uuid + ".x", loc.getX());
-            getConfig().set("homes." + uuid + ".y", loc.getY());
-            getConfig().set("homes." + uuid + ".z", loc.getZ());
-            getConfig().set("homes." + uuid + ".yaw", loc.getYaw());
-            getConfig().set("homes." + uuid + ".pitch", loc.getPitch());
-
-            saveConfig(); // end Salva
-
-            player.sendMessage(Component.text("Home definida com sucesso!", NamedTextColor.GREEN));
-            return true;
-        }
-
-        // COMANDO /HOME
-        if (command.getName().equalsIgnoreCase("home")) {
-            String uuid = player.getUniqueId().toString();
-
-            if (!getConfig().contains("homes." + uuid)) {
-                player.sendMessage(Component.text("Você não tem uma home definida! Use /sethome.", NamedTextColor.RED));
-                return true;
-            }
-
-            // Recupera os dados do arquivo
-            String worldName = getConfig().getString("homes." + uuid + ".world");
-            double x = getConfig().getDouble("homes." + uuid + ".x");
-            double y = getConfig().getDouble("homes." + uuid + ".y");
-            double z = getConfig().getDouble("homes." + uuid + ".z");
-            float yaw = (float) getConfig().getDouble("homes." + uuid + ".yaw");
-            float pitch = (float) getConfig().getDouble("homes." + uuid + ".pitch");
-
-            Location homeLoc = new Location(getServer().getWorld(worldName), x, y, z, yaw, pitch);
-
-            player.teleport(homeLoc);
-            player.sendMessage(Component.text("Teleportado para sua home!", NamedTextColor.AQUA));
-            return true;
-        }
-        //end /HOME
-
-        //HABILIDADES GUI
-        if (command.getName().equalsIgnoreCase("habilidades")) {
-                abrirMenuHabilidades(player);
-            return true;
-        }
-
-
-        return false;
-    }
-
-    private void abrirMenuHabilidades(Player player) {
-
-        Inventory gui = Bukkit.createInventory(null, 27, Component.text(TITULO_GUI));
-
-        // Cria o item que representa a habilidade
-        ItemStack itemGelo = new ItemStack(Material.ICE);
-        ItemMeta meta = itemGelo.getItemMeta();
-
-        meta.displayName(Component.text("Habilidade: Passo Gelado", NamedTextColor.AQUA));
-
-        // Altera a descrição com base no estado atual
-        boolean estaAtivo = modoGeloAtivo.contains(player.getUniqueId());
-        meta.lore(java.util.List.of(
-                Component.text("Status: " +
-                                (estaAtivo ? "ATIVADO" : "DESATIVADO"),
-                        estaAtivo ? NamedTextColor.GREEN : NamedTextColor.RED)
-        ));
-
-        itemGelo.setItemMeta(meta);
-        gui.setItem(13, itemGelo);
-
-        player.openInventory(gui);
+                .append(Component.text(" entrou no servidor!", NamedTextColor.GRAY));
+        Bukkit.broadcast(mensagem);
     }
 
     @EventHandler
     public void aoClicarNoMenu(InventoryClickEvent event) {
-        // Verificar se é menu
         if (!event.getView().title().equals(Component.text(TITULO_GUI))) return;
-
-        event.setCancelled(true); // Impede o player de pegar o item do menu
+        event.setCancelled(true);
 
         if (event.getCurrentItem() == null || event.getCurrentItem().getType() == Material.AIR) return;
 
         Player player = (Player) event.getWhoClicked();
         UUID uuid = player.getUniqueId();
 
-        // Alterna o estado da habilidade
+        // Alterna habilidade
         if (modoGeloAtivo.contains(uuid)) {
             modoGeloAtivo.remove(uuid);
             salvarEstadoGelo(uuid, false);
-
-            player.sendMessage(Component.text("Habilidade de Gelo", NamedTextColor.WHITE)
-                    .append(Component.text(" DESATIVADA!", NamedTextColor.RED)));
+            player.sendMessage(Component.text("Passo Gelado ", NamedTextColor.AQUA)
+                    .append(Component.text("DESATIVADO", NamedTextColor.RED)));
         } else {
             modoGeloAtivo.add(uuid);
             salvarEstadoGelo(uuid, true);
-            player.sendMessage(Component.text("Habilidade de Gelo", NamedTextColor.WHITE)
-                    .append(Component.text(" ATIVADA!", NamedTextColor.GREEN)));
-
-            ;
+            player.sendMessage(Component.text("Passo Gelado ", NamedTextColor.AQUA)
+                    .append(Component.text("ATIVADO", NamedTextColor.GREEN)));
         }
 
-        player.closeInventory(); // Fecha o menu
+        player.closeInventory();
     }
-    private boolean modoGeloPlayer(UUID uuid){
-        return modoGeloAtivo.contains(uuid);
+
+    @EventHandler
+    public void aoAndar(PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+        if (!modoGeloAtivo.contains(player.getUniqueId())) return;
+
+        Location loc = event.getTo();
+        if (loc == null) return;
+
+        Block blockAbaixo = loc.clone().add(0, -1, 0).getBlock();
+
+        if (blockAbaixo.getType() == Material.WATER) {
+            if (blockAbaixo.getBlockData() instanceof org.bukkit.block.data.Levelled levelled) {
+                if (levelled.getLevel() == 0 && blockAbaixo.getRelative(0, 1, 0).getType() == Material.AIR) {
+                    blockAbaixo.setType(Material.ICE);
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    public void aoAtacar(EntityDamageByEntityEvent event) {
+        if (!(event.getDamager() instanceof Player player)) return;
+
+        ItemStack item = player.getInventory().getItemInMainHand();
+        if (!item.hasItemMeta() || !item.getItemMeta().hasCustomModelData()) return;
+        if (item.getItemMeta().getCustomModelData() != 1001) return;
+
+        if (event.getEntity() instanceof org.bukkit.entity.LivingEntity vitima) {
+            vitima.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                    org.bukkit.potion.PotionEffectType.SLOWNESS, 100, 1));
+            player.sendMessage(Component.text("Inimigo congelado!", NamedTextColor.AQUA));
+        }
+    }
+
+    // ==================== COMANDOS ====================
+
+    @Override
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
+                             @NotNull String label, @NotNull String[] args) {
+
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("Apenas jogadores podem usar este comando.");
+            return true;
+        }
+
+        String cmd = command.getName().toLowerCase();
+
+        return switch (cmd) {
+            case "sethome" -> comandoSetHome(player);
+            case "home" -> comandoHome(player);
+            case "habilidades" -> comandoHabilidades(player);
+            case "balance" -> comandoBalance(player);
+            case "darmoeda" -> comandoDarMoeda(player, args);
+            default -> false;
+        };
+    }
+
+    private boolean comandoSetHome(Player player) {
+        Location loc = player.getLocation();
+        String uuid = player.getUniqueId().toString();
+
+        getConfig().set("homes." + uuid + ".world", loc.getWorld().getName());
+        getConfig().set("homes." + uuid + ".x", loc.getX());
+        getConfig().set("homes." + uuid + ".y", loc.getY());
+        getConfig().set("homes." + uuid + ".z", loc.getZ());
+        getConfig().set("homes." + uuid + ".yaw", loc.getYaw());
+        getConfig().set("homes." + uuid + ".pitch", loc.getPitch());
+        saveConfig();
+
+        player.sendMessage(Component.text("✓ Home definida!", NamedTextColor.GREEN));
+        return true;
+    }
+
+    private boolean comandoHome(Player player) {
+        String uuid = player.getUniqueId().toString();
+
+        if (!getConfig().contains("homes." + uuid)) {
+            player.sendMessage(Component.text("Você não tem home! Use /sethome.", NamedTextColor.RED));
+            return true;
+        }
+
+        String world = getConfig().getString("homes." + uuid + ".world");
+        double x = getConfig().getDouble("homes." + uuid + ".x");
+        double y = getConfig().getDouble("homes." + uuid + ".y");
+        double z = getConfig().getDouble("homes." + uuid + ".z");
+        float yaw = (float) getConfig().getDouble("homes." + uuid + ".yaw");
+        float pitch = (float) getConfig().getDouble("homes." + uuid + ".pitch");
+
+        Location home = new Location(getServer().getWorld(world), x, y, z, yaw, pitch);
+        player.teleport(home);
+        player.sendMessage(Component.text("✓ Teleportado para sua home!", NamedTextColor.AQUA));
+        return true;
+    }
+
+    private boolean comandoHabilidades(Player player) {
+        abrirMenuHabilidades(player);
+        return true;
+    }
+
+    private boolean comandoBalance(Player player) {
+        Economy economy = getServer().getServicesManager().getRegistration(Economy.class).getProvider();
+
+        if (economy == null) {
+            player.sendMessage(Component.text("Economia indisponível!", NamedTextColor.RED));
+            return true;
+        }
+
+        double saldo = economy.getBalance(player);
+
+        player.sendMessage(Component.text("━━━━━━━━━━━━━━━━━━━━", NamedTextColor.GRAY));
+        player.sendMessage(Component.text("💰 Seu Saldo", NamedTextColor.GOLD, TextDecoration.BOLD));
+        player.sendMessage(Component.text(""));
+        player.sendMessage(Component.text("  Moedas: ", NamedTextColor.YELLOW)
+                .append(Component.text(String.format("%.2f", saldo), NamedTextColor.WHITE)));
+        player.sendMessage(Component.text("━━━━━━━━━━━━━━━━━━━━", NamedTextColor.GRAY));
+        return true;
+    }
+
+    private boolean comandoDarMoeda(Player player, String[] args) {
+        if (args.length < 1) {
+            player.sendMessage(Component.text("Use: /darmoeda <quantia>", NamedTextColor.RED));
+            return true;
+        }
+
+        try {
+            double quantia = Double.parseDouble(args[0]);
+            Economy economy = getServer().getServicesManager().getRegistration(Economy.class).getProvider();
+
+            if (economy == null) {
+                player.sendMessage(Component.text("Economia indisponível!", NamedTextColor.RED));
+                return true;
+            }
+
+            economy.depositPlayer(player, quantia);
+            player.sendMessage(Component.text("✓ Você recebeu ", NamedTextColor.GREEN)
+                    .append(Component.text(String.format("%.2f Moedas!", quantia), NamedTextColor.GOLD)));
+
+        } catch (NumberFormatException e) {
+            player.sendMessage(Component.text("Valor inválido!", NamedTextColor.RED));
+        }
+        return true;
+    }
+
+    // ==================== UTILIDADES ====================
+
+    private void abrirMenuHabilidades(Player player) {
+        Inventory gui = Bukkit.createInventory(null, 27, Component.text(TITULO_GUI));
+        ItemStack itemGelo = new ItemStack(Material.ICE);
+        ItemMeta meta = itemGelo.getItemMeta();
+
+        boolean ativo = modoGeloAtivo.contains(player.getUniqueId());
+
+        meta.displayName(Component.text("Passo Gelado", NamedTextColor.AQUA));
+        meta.lore(java.util.List.of(
+                Component.text("Status: " + (ativo ? "ATIVADO" : "DESATIVADO"),
+                        ativo ? NamedTextColor.GREEN : NamedTextColor.RED)
+        ));
+
+        itemGelo.setItemMeta(meta);
+        gui.setItem(13, itemGelo);
+        player.openInventory(gui);
     }
 
     private void salvarEstadoGelo(UUID uuid, boolean ativo) {
         getConfig().set("habilidades." + uuid + ".passo-gelado", ativo);
         saveConfig();
-    }
-
-    @EventHandler
-    public void movement(PlayerMoveEvent event) {
-        Player player = event.getPlayer();
-        if (!modoGeloAtivo.contains(player.getUniqueId())) return;
-
-        // --- CONFIGURAÇÃO ---
-        int raio = 0;
-        Location loc = event.getTo();
-        if (loc == null) return;
-        for (int x = -raio; x <= raio; x++) {
-            for (int z = -raio; z <= raio; z++) {
-                Block block = loc.clone().add(x, -1, z).getBlock();
-                if (block.getType() == Material.WATER) {
-                    if (block.getBlockData() instanceof org.bukkit.block.data.Levelled levelled) {
-                        if (levelled.getLevel() == 0) {
-                            if (block.getRelative(0, 1, 0).getType() == Material.AIR) {
-                                block.setType(Material.ICE);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    public ItemStack criarEspadaGelo() {
-        ItemStack espada = new ItemStack(Material.DIAMOND_SWORD);
-        ItemMeta meta = espada.getItemMeta();
-
-        meta.displayName(Component.text("Espada de Gelo", NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false));
-
-        //ID único para textura
-        meta.setCustomModelData(1001);
-
-        meta.lore(java.util.List.of(Component.text("Aplica lentidão aos inimigos!", NamedTextColor.GRAY)));
-
-        espada.setItemMeta(meta);
-        return espada;
-    }
-
-    @EventHandler
-    public void aoAtacar(EntityDamageByEntityEvent event) {
-        if (event.getDamager() instanceof Player player) {
-            ItemStack item = player.getInventory().getItemInMainHand();
-
-            // Verifica se o item tem o nosso CustomModelData
-            if (item.hasItemMeta() && item.getItemMeta().hasCustomModelData()) {
-                if (item.getItemMeta().getCustomModelData() == 1001) {
-                    if (event.getEntity() instanceof org.bukkit.entity.LivingEntity vitima) {
-                        // Aplica lentidão nível 2 por 5 segundos (100 ticks)
-                        vitima.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                                org.bukkit.potion.PotionEffectType.SLOWNESS, 100, 1));
-
-                        player.sendMessage(Component.text("Inimigo congelado!", NamedTextColor.AQUA));
-                    }
-                }
-            }
-        }
     }
 }
