@@ -16,6 +16,7 @@ public class ItensManager {
 
         // Registra itens customizados
         registrarItem(new EspadaGeloItem(plugin));
+        registrarItem(new jnetu.meu_plugin.itens.EssenciaPedraItem(plugin));
     }
 
     public void registrarItem(ItemCustomizado item) {
