@@ -34,3 +34,5 @@
 * **hunter**
 * **slayer**
 * **Taming**
+* **Reliquics system**
+* **necromancy**
