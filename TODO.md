@@ -36,3 +36,4 @@
 * **Taming**
 * **Reliquics system**
 * **necromancy**
+* **Assassinos** -- kill players
