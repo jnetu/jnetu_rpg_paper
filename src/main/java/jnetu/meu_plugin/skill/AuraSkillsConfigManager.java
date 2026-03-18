@@ -5,7 +5,9 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 
@@ -30,6 +32,7 @@ public class AuraSkillsConfigManager {
         }
 
         try {
+            injetarArquivosDeConfiguracao();
             injetarCarismaNoStatInfo();
             injetarChatBatteryNoStatInfo();
             injetarSocialNoLevelProgression();
@@ -52,22 +55,18 @@ public class AuraSkillsConfigManager {
 
         FileConfiguration config = YamlConfiguration.loadConfiguration(statInfoFile);
 
-        // Verifica se já existe a configuração
         String basePathStat = "templates.stat.contexts";
-        if (config.contains(basePathStat + ".meu_plugin:carisma")) {
+
+        if (config.contains(basePathStat + ".meu_plugin/carisma")) {
             plugin.getLogger().info("Carisma já está configurado em stat_info.yml");
             return;
         }
 
-        // Adiciona o contexto do Carisma
-        config.set(basePathStat + ".carisma.material", "player_head");
-        config.set(basePathStat + ".meu_plugin:carisma.material", "player_head");
+        config.set(basePathStat + ".meu_plugin/carisma.material", "player_head");
 
-        // Injeta o trait chat_battery
         String basePathTrait = "templates.trait.contexts";
-        if (!config.contains(basePathTrait + ".meu_plugin:chat_battery")) {
-            config.set(basePathTrait + ".chat_battery.material", "clock");
-            config.set(basePathTrait + ".meu_plugin:chat_battery.material", "clock");
+        if (!config.contains(basePathTrait + ".meu_plugin/chat_battery")) {
+            config.set(basePathTrait + ".meu_plugin/chat_battery.material", "clock");
         }
 
         config.save(statInfoFile);
@@ -142,5 +141,51 @@ public class AuraSkillsConfigManager {
         }
 
         config.save(arquivo);
+    }
+
+
+    private void copiarResource(String resourcePath, File destino) throws IOException {
+        if (destino.exists()) {
+            plugin.getLogger().info("Arquivo já existe, pulando: " + resourcePath);
+            return;
+        }
+
+        InputStream in = plugin.getResource(resourcePath);
+        if (in == null) {
+            plugin.getLogger().warning("Resource não encontrado no JAR: " + resourcePath);
+            return;
+        }
+
+        destino.getParentFile().mkdirs();
+
+        try (InputStream input = in;
+             FileOutputStream output = new FileOutputStream(destino)) {
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = input.read(buffer)) != -1) {
+                output.write(buffer, 0, bytesRead);
+            }
+        }
+
+        plugin.getLogger().info("✓ Criado: " + destino.getPath());
+    }
+
+    private void injetarArquivosDeConfiguracao() {
+        // saveResource(path, replace) — false = não sobrescreve se já existir
+        salvarResourceSeNaoExistir("stats.yml");
+        salvarResourceSeNaoExistir("sources/social.yml");
+        salvarResourceSeNaoExistir("rewards/social.yml");
+    }
+
+    private void salvarResourceSeNaoExistir(String resourcePath) {
+        File destino = new File(plugin.getDataFolder(), resourcePath);
+        if (destino.exists()) {
+            plugin.getLogger().info("Arquivo já existe, pulando: " + resourcePath);
+            return;
+        }
+        // Cria subpastas (ex: sources/, rewards/) se necessário
+        destino.getParentFile().mkdirs();
+        plugin.saveResource(resourcePath, false);
+        plugin.getLogger().info("✓ Criado: " + resourcePath);
     }
 }
