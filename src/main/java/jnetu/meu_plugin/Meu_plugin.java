@@ -8,6 +8,7 @@ import jnetu.meu_plugin.economy.MoedaEconomy;
 import jnetu.meu_plugin.habilidades.HabilidadesManager;
 import jnetu.meu_plugin.itens.ItensManager;
 import jnetu.meu_plugin.menu.MenuListener;
+import jnetu.meu_plugin.regras.MorteManager;
 import jnetu.meu_plugin.skill.*;
 import jnetu.meu_plugin.util.PluginsListCustomizer;
 import net.kyori.adventure.text.Component;
@@ -28,6 +29,7 @@ public final class Meu_plugin extends JavaPlugin implements Listener {
     private ItensManager itensManager;
     private ComandosManager comandosManager;
     private CraftingManager craftingManager;
+    private MorteManager morteManager;
 
     @Override
     public void onEnable() {
@@ -41,6 +43,7 @@ public final class Meu_plugin extends JavaPlugin implements Listener {
         this.itensManager = new ItensManager(this);
         this.comandosManager = new ComandosManager(this);
         this.craftingManager = new CraftingManager(this);
+        this.morteManager = new MorteManager(this);
 
         // 2. Registra economia no Vault
         carregarEconomia();
