@@ -25,7 +25,7 @@ public class EssenciaDropListener implements Listener, CustomDrop {
 
     public EssenciaDropListener(Meu_plugin plugin) {
         this.plugin = plugin;
-        this.dropChance = plugin.getConfig().getDouble("crafting.essencia.drop-chance", 0.50);
+        this.dropChance = plugin.getConfig().getDouble("crafting.essencia.drop-chance");
     }
 
     @Override
@@ -83,6 +83,6 @@ public class EssenciaDropListener implements Listener, CustomDrop {
      * Recarrega a configuração
      */
     public void recarregarConfig() {
-        this.dropChance = plugin.getConfig().getDouble("crafting.essencia.drop-chance", 0.50);
+        this.dropChance = plugin.getConfig().getDouble("crafting.essencia.drop-chance");
     }
 }

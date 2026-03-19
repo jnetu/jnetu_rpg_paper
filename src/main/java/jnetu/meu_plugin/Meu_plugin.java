@@ -31,6 +31,7 @@ public final class Meu_plugin extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
+        saveDefaultConfig();
         getLogger().info("=========================================");
         getLogger().info(" Iniciando Plugin de Skills (Jnetu)");
         getLogger().info("=========================================");
