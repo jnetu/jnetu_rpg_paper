@@ -24,7 +24,7 @@ public class CraftingManager {
         this.recipeBlockListener = new RecipeBlockListener(plugin);
 
         // Inicializa configuração padrão
-        inicializarConfig();
+        //inicializarConfig();
 
         registrarListeners();
 
